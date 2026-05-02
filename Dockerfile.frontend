@@ -1,0 +1,14 @@
+FROM python:3.11-alpine
+
+WORKDIR /app
+
+RUN apk add --no-cache gcc musl-dev libffi-dev && \
+    pip install poetry==1.8.3 && \
+    poetry config virtualenvs.create false
+
+COPY pyproject.toml poetry.lock* ./
+RUN poetry install --no-root --without dev
+
+COPY . .
+
+CMD ["streamlit", "run", "frontend/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
