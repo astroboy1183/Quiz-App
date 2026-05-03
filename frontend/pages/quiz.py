@@ -106,9 +106,13 @@ def render_quiz_screen() -> None:
     q_num = st.session_state["current_q"]
     total = st.session_state["total_qs"]
 
+    # Timer key is scoped to (session, question) so stale keys from old
+    # sessions never cause an instant-zero timer on a fresh quiz.
+    timer_key = f"{session_id}_q{q_num}"
+
     # Load question from backend if not yet loaded for this question number
     if st.session_state.get("current_question") is None:
-        reset_timer()
+        reset_timer(key=timer_key)
         try:
             q_data = _get(f"/quiz/{session_id}/question/{q_num}")
         except httpx.HTTPError as e:
@@ -125,20 +129,20 @@ def render_quiz_screen() -> None:
     st.progress((q_num - 1) / total, text=f"Question {q_num} of {total}")
 
     # Timer (S1-05)
-    remaining = render_timer(TIMER_SECONDS, key=f"q{q_num}")
+    remaining = render_timer(TIMER_SECONDS, key=timer_key)
 
     # Auto-submit on timeout
     if remaining == 0 and not submitted:
         _submit_answer(session_id, q, selected=None, time_taken=TIMER_SECONDS)
 
-    # Question card (S1-02, S1-03)
+    # Question card — no feedback revealed during quiz
     clicked = render_question_card(
         question_number=q_num,
         total=total,
         question_text=q["question_text"],
         options=q["options"],
         submitted=submitted,
-        correct_answer=q.get("correct_answer") if submitted else None,
+        correct_answer=None,  # never reveal during quiz; shown in results review
         user_answer=st.session_state["user_answer"],
     )
 
@@ -146,27 +150,26 @@ def render_quiz_screen() -> None:
         elapsed = TIMER_SECONDS - remaining
         _submit_answer(session_id, q, selected=clicked, time_taken=elapsed)
 
-    # Feedback message
     if submitted:
-        if st.session_state.get("last_correct"):
-            st.success("✅ Correct!")
+        if st.session_state["user_answer"] is None:
+            st.info("⏱ Time's up! Moving on…")
         else:
-            st.error(f"❌ Wrong. Correct answer: **{q['correct_answer']}**")
+            st.info("Answer recorded. You'll see how you did at the end.")
 
         st.markdown("---")
         if q_num < total:
             if st.button("Next Question →", use_container_width=True, type="primary"):
                 st.session_state["current_q"] += 1
                 st.session_state["current_question"] = None
-                reset_timer()
+                st.session_state.pop("correct_answer", None)
                 st.rerun()
         else:
             if st.button("See Results 🏆", use_container_width=True, type="primary"):
                 _fetch_and_store_results(session_id)
                 _go("results")
     else:
-        # Keep rerunning every second to animate the timer
-        time.sleep(1)
+        # Rerun every 0.5 s so the timer updates smoothly
+        time.sleep(0.5)
         st.rerun()
 
 
@@ -180,7 +183,6 @@ def _submit_answer(
                 "question_number": st.session_state["current_q"],
                 "question_text": q["question_text"],
                 "selected_option": selected,
-                "correct_answer": q["correct_answer"],
                 "topic": q["topic"],
                 "difficulty": q["difficulty"],
                 "time_taken": time_taken,
@@ -189,7 +191,18 @@ def _submit_answer(
         st.session_state["submitted"] = True
         st.session_state["user_answer"] = selected
         st.session_state["last_correct"] = resp["is_correct"]
+        st.session_state["correct_answer"] = resp["correct_answer"]
         st.session_state["answer_time"] = time_taken
+        st.session_state["answers_log"].append(
+            {
+                "question_number": st.session_state["current_q"],
+                "question_text": q["question_text"],
+                "options": q["options"],
+                "user_answer": selected,
+                "correct_answer": resp["correct_answer"],
+                "is_correct": resp["is_correct"],
+            }
+        )
     except httpx.HTTPError as e:
         st.error(f"Failed to submit answer: {e}")
 
@@ -224,6 +237,32 @@ def render_results_screen() -> None:
 
     st.markdown("---")
     render_topic_breakdown_chart(results.get("topic_breakdown", []))
+
+    # Answer review
+    answers_log = st.session_state.get("answers_log", [])
+    if answers_log:
+        st.markdown("---")
+        st.subheader("📋 Answer Review")
+        for entry in answers_log:
+            q_num = entry["question_number"]
+            is_correct = entry["is_correct"]
+            user_ans = entry["user_answer"]
+            correct_ans = entry["correct_answer"]
+            options = entry["options"]
+
+            icon = "✅" if is_correct else ("⏱" if user_ans is None else "❌")
+            with st.expander(f"{icon} Q{q_num}. {entry['question_text']}"):
+                render_question_card(
+                    question_number=q_num,
+                    total=results["total_qs"],
+                    question_text=entry["question_text"],
+                    options=options,
+                    submitted=True,
+                    correct_answer=correct_ans,
+                    user_answer=user_ans,
+                )
+                if user_ans is None:
+                    st.caption("⏱ You ran out of time on this question.")
 
     st.markdown("---")
     col1, col2 = st.columns(2)

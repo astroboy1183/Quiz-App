@@ -2,11 +2,14 @@ import asyncio
 import os
 from logging.config import fileConfig
 
+from dotenv import load_dotenv
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
+
+load_dotenv()  # loads .env before anything reads os.environ
 
 config = context.config
 
@@ -14,14 +17,17 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Override sqlalchemy.url from environment so we never hard-code credentials
-config.set_main_option("sqlalchemy.url", os.environ.get(
-    "DATABASE_URL",
-    "postgresql+asyncpg://quizmind:quizmind@localhost:5432/quizmind",
-))
+config.set_main_option(
+    "sqlalchemy.url",
+    os.environ.get(
+        "DATABASE_URL",
+        "postgresql+asyncpg://quizmind:quizmind@localhost:5433/quizmind",
+    ),
+)
 
 # Import all models so autogenerate can detect them
-from backend.models import Answer, QuizSession, User  # noqa: F401, E402
 from backend.database import Base  # noqa: E402
+from backend.models import Answer, QuizSession, User  # noqa: F401, E402
 
 target_metadata = Base.metadata
 

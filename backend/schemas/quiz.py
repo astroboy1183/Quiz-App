@@ -54,7 +54,6 @@ class AnswerSubmitRequest(BaseModel):
     question_number: int
     question_text: str
     selected_option: str | None = None  # None = timed out
-    correct_answer: str
     topic: str
     difficulty: str
     time_taken: int = Field(default=0, ge=0)

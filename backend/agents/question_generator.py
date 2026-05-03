@@ -13,7 +13,7 @@ _client = AsyncOpenAI(api_key=settings.openai_api_key)
 _SYSTEM_PROMPT = (
     "You are a quiz question generator. "
     "Return ONLY valid JSON — no markdown, no extra text.\n\n"
-    "Generate {{count}} unique multiple-choice questions about "
+    "Generate {count} unique multiple-choice questions about "
     '"{topic}" at {difficulty} difficulty.\n\n'
     "Rules:\n"
     "- Each question has exactly 4 options labelled A, B, C, D.\n"
@@ -21,17 +21,16 @@ _SYSTEM_PROMPT = (
     "- Questions must be distinct — no duplicates.\n"
     "- Difficulty guide: Easy = factual recall, "
     "Medium = applied knowledge, Hard = nuanced/analytical.\n\n"
-    "Return a JSON array:\n"
-    "[\n"
+    'Return a JSON object with a single key "questions" containing an array:\n'
+    '{{"questions": [\n'
     "  {{\n"
     '    "question_text": "...",\n'
     '    "options": {{"A": "...", "B": "...", "C": "...", "D": "..."}},\n'
     '    "correct_answer": "A",\n'
     '    "topic": "{topic}",\n'
     '    "difficulty": "{difficulty}"\n'
-    "  }},\n"
-    "  ...\n"
-    "]"
+    "  }}\n"
+    "]}}"
 )
 
 
@@ -60,7 +59,11 @@ async def generate_questions(
 
             parsed = json.loads(raw)
             if isinstance(parsed, dict):
-                questions_data = next(v for v in parsed.values() if isinstance(v, list))
+                questions_data = next(
+                    (v for v in parsed.values() if isinstance(v, list)), None
+                )
+                if questions_data is None:
+                    raise ValueError("No list found in JSON response")
             else:
                 questions_data = parsed
 

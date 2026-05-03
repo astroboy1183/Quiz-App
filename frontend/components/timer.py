@@ -31,8 +31,8 @@ def render_timer(duration_seconds: int, key: str = "timer") -> int:
             </span>
         </div>
         <div style="background:#e0e0e0;border-radius:6px;height:10px;width:100%;">
-            <div style="background:{color};width:{fraction*100:.1f}%;height:10px;border-radius:6px;
-                        transition:width 0.5s ease;"></div>
+            <div style="background:{color};width:{fraction*100:.1f}%;height:10px;
+                        border-radius:6px;transition:width 0.5s ease;"></div>
         </div>
         """,
         unsafe_allow_html=True,

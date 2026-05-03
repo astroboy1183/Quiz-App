@@ -84,13 +84,18 @@ async def submit_answer(
     if not questions:
         raise HTTPException(status_code=404, detail="Session not found or expired")
 
-    is_correct = evaluate_answer(body.selected_option, body.correct_answer)
+    n = body.question_number
+    if n < 1 or n > len(questions):
+        raise HTTPException(status_code=400, detail="Invalid question number")
+
+    correct_answer = questions[n - 1].correct_answer
+    is_correct = evaluate_answer(body.selected_option, correct_answer)
 
     await record_answer(
         db,
         session_id=session_id,
         question_text=body.question_text,
-        correct_answer=body.correct_answer,
+        correct_answer=correct_answer,
         user_answer=body.selected_option,
         is_correct=is_correct,
         topic=body.topic,
@@ -100,9 +105,7 @@ async def submit_answer(
 
     await orchestrator.on_answer_submitted(session_id, body.question_number, is_correct)
 
-    return AnswerSubmitResponse(
-        is_correct=is_correct, correct_answer=body.correct_answer
-    )
+    return AnswerSubmitResponse(is_correct=is_correct, correct_answer=correct_answer)
 
 
 @router.get("/{session_id}/results", response_model=QuizResultsResponse)
