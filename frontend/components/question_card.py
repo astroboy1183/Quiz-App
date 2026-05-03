@@ -9,12 +9,14 @@ _S_WRONG = (
     "border-radius:8px;padding:10px 16px;margin-bottom:8px;font-weight:600;"
 )
 _S_SELECTED = (
-    "background:#e8f0fe;border:2px solid #4a90d9;"
-    "border-radius:8px;padding:10px 16px;margin-bottom:8px;font-weight:600;"
+    "background:rgba(74,144,217,0.2);border:2px solid #4a90d9;"
+    "border-radius:8px;padding:10px 16px;margin-bottom:8px;"
+    "font-weight:600;color:#ffffff;"
 )
 _S_DIMMED = (
-    "background:#f8f9fa;border:1px solid #dee2e6;"
-    "border-radius:8px;padding:10px 16px;margin-bottom:8px;color:#6c757d;"
+    "background:transparent;border:1px solid rgba(255,255,255,0.1);"
+    "border-radius:8px;padding:10px 16px;margin-bottom:8px;"
+    "color:rgba(255,255,255,0.35);"
 )
 
 

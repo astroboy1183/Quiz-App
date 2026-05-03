@@ -134,6 +134,7 @@ def render_quiz_screen() -> None:
     # Auto-submit on timeout
     if remaining == 0 and not submitted:
         _submit_answer(session_id, q, selected=None, time_taken=TIMER_SECONDS)
+        st.rerun()
 
     # Question card — no feedback revealed during quiz
     clicked = render_question_card(
@@ -149,6 +150,7 @@ def render_quiz_screen() -> None:
     if clicked and not submitted:
         elapsed = TIMER_SECONDS - remaining
         _submit_answer(session_id, q, selected=clicked, time_taken=elapsed)
+        st.rerun()  # immediately show neutral highlight without waiting for timer loop
 
     if submitted:
         if st.session_state["user_answer"] is None:
