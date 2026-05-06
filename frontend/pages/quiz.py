@@ -31,8 +31,9 @@ DIFFICULTIES = ["Easy", "Medium", "Hard"]
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-def _post(path: str, payload: dict) -> dict:
-    resp = httpx.post(f"{BACKEND}{path}", json=payload, timeout=30)
+def _post(path: str, payload: dict, token: str | None = None) -> dict:
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    resp = httpx.post(f"{BACKEND}{path}", json=payload, headers=headers, timeout=30)
     resp.raise_for_status()
     return resp.json()
 
@@ -56,10 +57,25 @@ def render_start_screen() -> None:
     st.markdown("Test your knowledge with AI-generated questions.")
     st.markdown("---")
 
-    topic = st.selectbox("Choose a topic", TOPICS, index=TOPICS.index("Mixed"))
-    difficulty = st.radio("Difficulty", DIFFICULTIES, index=1, horizontal=True)
+    # Pre-fill from user preferences when logged in
+    user = st.session_state.get("user", {})
+    default_topic = user.get("preferred_topic", "Mixed")
+    default_diff = user.get("preferred_difficulty", "Medium")
+    default_qs = user.get("question_count", 10)
+
+    topic = st.selectbox("Choose a topic", TOPICS, index=TOPICS.index(default_topic))
+    difficulty = st.radio(
+        "Difficulty",
+        DIFFICULTIES,
+        index=DIFFICULTIES.index(default_diff),
+        horizontal=True,
+    )
     total_qs = st.slider(
-        "Number of questions", min_value=5, max_value=20, value=10, step=5
+        "Number of questions",
+        min_value=5,
+        max_value=20,
+        value=default_qs,
+        step=5,
     )
 
     if st.button("🚀 Start Quiz", use_container_width=True, type="primary"):
@@ -72,6 +88,7 @@ def render_start_screen() -> None:
                         "difficulty": difficulty,
                         "total_qs": total_qs,
                     },
+                    token=st.session_state.get("token"),
                 )
             except httpx.HTTPError as e:
                 st.error(f"Could not start quiz: {e}")

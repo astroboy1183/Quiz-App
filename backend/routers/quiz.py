@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.agents.answer_evaluator import evaluate_answer
 from backend.agents.orchestrator import orchestrator
 from backend.agents.question_generator import generate_questions
+from backend.auth import get_optional_user
 from backend.database import get_db
 from backend.schemas.quiz import (
     AnswerSubmitRequest,
@@ -30,12 +31,18 @@ _question_cache: dict[str, list] = {}
 
 
 @router.post("/start", response_model=QuizStartResponse, status_code=201)
-async def start_quiz(body: QuizStartRequest, db: AsyncSession = Depends(get_db)):
+async def start_quiz(
+    body: QuizStartRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user=Depends(get_optional_user),
+):
+    user_id = current_user.id if current_user else None
     session = await create_session(
         db,
         topic=body.topic,
         difficulty=body.difficulty,
         total_qs=body.total_qs,
+        user_id=user_id,
     )
 
     # Pre-generate all questions and cache them for this session
